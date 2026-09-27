@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      RELEASE_TAG: v0.4.0
+      RELEASE_TAG: v0.4.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,13 +36,22 @@ jobs:
         run: |
           $publish = "TurboSafeOptimizer/bin/Release/net8.0-windows/win-x64/publish"
           $exe = Join-Path $publish "TurboSafeOptimizer.exe"
-          if (!(Test-Path $exe -PathType Leaf)) { throw "No se encontró TurboSafeOptimizer.exe en $publish" }
+          if (!(Test-Path $exe -PathType Leaf)) { throw "No se encontró TurboSafeOptimizer.exe" }
           $size = (Get-Item $exe).Length
           if ($size -lt 1000000) { throw "El EXE parece demasiado pequeño: $size bytes" }
           Write-Host "EXE OK: $exe ($size bytes)"
-          Get-ChildItem $publish | Select-Object Name,Length
 
-      - name: Create clean ZIP with EXE at root
+      - name: Test EXE metadata
+        shell: pwsh
+        run: |
+          $exe = "TurboSafeOptimizer/bin/Release/net8.0-windows/win-x64/publish/TurboSafeOptimizer.exe"
+          $item = Get-Item $exe
+          if ($item.Extension -ne ".exe") { throw "El archivo publicado no es EXE" }
+          $version = $item.VersionInfo.FileVersion
+          Write-Host "EXE version: $version"
+          Write-Host "EXE size: $($item.Length) bytes"
+
+      - name: Create clean ZIP
         shell: pwsh
         run: |
           $publish = "TurboSafeOptimizer/bin/Release/net8.0-windows/win-x64/publish"
@@ -53,42 +62,31 @@ jobs:
           Copy-Item "README.md" "$staging/README.txt"
           Compress-Archive -Path "$staging/*" -DestinationPath "TurboSafeOptimizer-win-x64.zip" -Force
 
-      - name: Verify ZIP really contains EXE
+      - name: Verify ZIP
         shell: pwsh
         run: |
-          $zip = "TurboSafeOptimizer-win-x64.zip"
-          if (!(Test-Path $zip -PathType Leaf)) { throw "No se creó el ZIP" }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $zip))
+          $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "TurboSafeOptimizer-win-x64.zip"))
           try {
             $entry = $archive.Entries | Where-Object { $_.FullName -eq "TurboSafeOptimizer.exe" }
-            if ($null -eq $entry) { throw "El ZIP NO contiene TurboSafeOptimizer.exe en la raíz" }
-            Write-Host "ZIP OK: TurboSafeOptimizer.exe ($($entry.Length) bytes)"
-          } finally {
-            $archive.Dispose()
-          }
+            if ($null -eq $entry) { throw "El ZIP no contiene TurboSafeOptimizer.exe" }
+            if ($entry.Length -lt 1000000) { throw "El EXE dentro del ZIP parece inválido" }
+          } finally { $archive.Dispose() }
 
-      - name: Calculate SHA-256
-        shell: pwsh
-        run: |
-          Get-FileHash "TurboSafeOptimizer-win-x64.zip" -Algorithm SHA256 | Format-List
-
-      - name: Upload artifact
+      - name: Upload ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TurboSafeOptimizer-win-x64-v0.4.0
+          name: TurboSafeOptimizer-win-x64-v0.4.1
           path: TurboSafeOptimizer-win-x64.zip
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish downloadable GitHub Release
+      - name: Publish release with direct EXE and ZIP
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $repo = "${{ github.repository }}"
-          gh release view $env:RELEASE_TAG --repo $repo *> $null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $env:RELEASE_TAG --repo $repo --target "${{ github.sha }}" --title "TurboSafe Optimizer $env:RELEASE_TAG" --notes "Windows x64 build. El ZIP contiene TurboSafeOptimizer.exe en la raíz."
-          }
+          gh release create $env:RELEASE_TAG --repo $repo --target "${{ github.sha }}" --title "TurboSafe Optimizer $env:RELEASE_TAG" --notes "Windows x64. Descarga directa EXE o ZIP."
+          gh release upload $env:RELEASE_TAG "TurboSafeOptimizer/bin/Release/net8.0-windows/win-x64/publish/TurboSafeOptimizer.exe" --repo $repo --clobber
           gh release upload $env:RELEASE_TAG "TurboSafeOptimizer-win-x64.zip" --repo $repo --clobber
