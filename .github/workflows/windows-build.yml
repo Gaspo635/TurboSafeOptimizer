@@ -6,11 +6,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      RELEASE_TAG: v0.3.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,10 +42,22 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path "TurboSafeOptimizer/bin/Release/net8.0-windows/win-x64/publish/*" -DestinationPath "TurboSafeOptimizer-win-x64.zip" -Force
 
-      - name: Upload EXE package
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: TurboSafeOptimizer-win-x64
           path: TurboSafeOptimizer-win-x64.zip
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish downloadable GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $repo = "${{ github.repository }}"
+          gh release view $env:RELEASE_TAG --repo $repo *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:RELEASE_TAG --repo $repo --target "${{ github.sha }}" --title "TurboSafe Optimizer $env:RELEASE_TAG" --notes "Windows x64 build generated automatically by GitHub Actions."
+          }
+          gh release upload $env:RELEASE_TAG "TurboSafeOptimizer-win-x64.zip" --repo $repo --clobber
