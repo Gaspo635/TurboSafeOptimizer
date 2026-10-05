@@ -1,27 +1,38 @@
 # TurboSafe Optimizer
 
-Optimizador de Windows orientado a gaming, diagnóstico y cambios reversibles.
+Professional Windows optimization and diagnostics utility focused on gaming, maintenance and reversible workflows.
 
-## Regla principal
-**NO MEJORÓ = NO SE QUEDA.**
+> **NO MEJORÓ = NO SE QUEDA.**
 
-TurboSafe mide el estado antes de un cambio, aplica cambios conservadores y reversibles, vuelve a medir y conserva el cambio solo si el resultado no empeora el perfil seleccionado.
+## What it does
 
-## Estado
-- v0.4.0 — base nativa de Windows + CI de compilación.
-- El instalador final debe probarse en Windows real antes de considerarse estable.
-- No desactiva Defender, Firewall, UAC ni mecanismos de seguridad para obtener rendimiento.
+- Detects CPU, GPU, RAM and Windows information.
+- Creates local diagnostic JSON reports.
+- Cleans Windows temporary files without targeting personal documents.
+- Flushes DNS and resets Winsock with confirmation.
+- Opens official Windows Game Mode settings.
+- Opens Windows System Information.
+- Can request a Windows restore point before major changes.
+- Does not disable Defender, Firewall, UAC or other Windows security mechanisms.
 
-## Compilar localmente
-Requiere .NET 8 SDK y Windows:
+## Download
+
+The latest self-contained Windows x64 executable is published automatically:
+
+https://github.com/Gaspo635/TurboSafeOptimizer/releases/latest/download/TurboSafeOptimizer.exe
+
+It is a single .exe and includes the .NET runtime.
+
+## Build
+
+Requires .NET 8 SDK and Windows:
 
 ```powershell
-dotnet publish TurboSafeOptimizer/TurboSafeOptimizer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+dotnet publish TurboSafeOptimizer/TurboSafeOptimizer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 ```
 
-El ejecutable se genera en `TurboSafeOptimizer/bin/Release/net8.0-windows/win-x64/publish/`.
+## Architecture
 
-## Arquitectura
-Escanear → Medir → Respaldar → Cambiar → Medir → Conservar/Revertir.
+Scan → Measure → Backup → Change → Measure → Keep/Revert.
 
-La primera versión nativa es deliberadamente conservadora: inventario y diagnóstico antes de habilitar cambios automáticos.
+The current release is deliberately conservative: diagnostics and maintenance first, with explicit confirmations for privileged operations.
