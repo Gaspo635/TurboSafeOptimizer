@@ -1,8 +1,8 @@
-name: Build and publish Windows executable
+name: Build iClover Tweaks
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,6 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,39 +18,32 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: 8.0.x
 
-      - name: Publish single executable
-        run: >
-          dotnet publish TurboSafeOptimizer/TurboSafeOptimizer.csproj
-          -c Release
-          -r win-x64
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:DebugType=None
-          -p:DebugSymbols=false
-          -o publish
+      - name: Restore
+        run: dotnet restore TurboSafeOptimizer/TurboSafeOptimizer.csproj
 
-      - name: Prepare release asset
+      - name: Build single EXE
+        run: dotnet publish TurboSafeOptimizer/TurboSafeOptimizer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false
+
+      - name: Verify EXE
         shell: pwsh
         run: |
-          if (Test-Path publish/TurboSafeOptimizer.exe) {
-            Copy-Item publish/TurboSafeOptimizer.exe TurboSafeOptimizer.exe -Force
-          } else {
-            $exe = Get-ChildItem publish -Filter *.exe | Select-Object -First 1
-            if (-not $exe) { throw "No executable was produced." }
-            Copy-Item $exe.FullName TurboSafeOptimizer.exe -Force
-          }
+          $exe = "TurboSafeOptimizer/bin/Release/net8.0-windows/win-x64/publish/iCloverTweaks.exe"
+          if (!(Test-Path $exe)) { throw "iCloverTweaks.exe was not produced." }
+          Write-Host "Verified: $exe"
+          Get-Item $exe | Select-Object FullName, Length
 
-      - name: Publish latest release
+      - name: Create GitHub Release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: pwsh
         run: |
-          gh release view latest 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create latest TurboSafeOptimizer.exe --title "TurboSafe Optimizer - Latest" --notes "Latest Windows x64 single-file build." --target $env:GITHUB_SHA
-          } else {
-            gh release upload latest TurboSafeOptimizer.exe --clobber
-          }
+          TAG="v1.0.${{ github.run_number }}"
+          gh release create "$TAG" "TurboSafeOptimizer/bin/Release/net8.0-windows/win-x64/publish/iCloverTweaks.exe" --title "iClover Tweaks $TAG" --notes "Windows 10/11 x64 single-file executable."
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iCloverTweaks
+          path: TurboSafeOptimizer/bin/Release/net8.0-windows/win-x64/publish/iCloverTweaks.exe
