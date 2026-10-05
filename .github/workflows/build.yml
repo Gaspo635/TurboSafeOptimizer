@@ -1,0 +1,94 @@
+name: Build iClover Tweaks
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and publish single EXE
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore TurboSafeOptimizer/TurboSafeOptimizer.csproj
+
+      - name: Build
+        run: dotnet build TurboSafeOptimizer/TurboSafeOptimizer.csproj -c Release -r win-x64 --self-contained true --no-restore
+
+      - name: Publish single EXE
+        shell: pwsh
+        run: |
+          $project = "TurboSafeOptimizer/TurboSafeOptimizer.csproj"
+          $publish = "$env:GITHUB_WORKSPACE/publish"
+
+          if (Test-Path $publish) {
+            Remove-Item $publish -Recurse -Force
+          }
+
+          dotnet publish $project `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            --no-restore `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:PublishTrimmed=false `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:GenerateDocumentationFile=false `
+            -o $publish
+
+      - name: Verify exactly one release file
+        shell: pwsh
+        run: |
+          $publish = "$env:GITHUB_WORKSPACE/publish"
+          $exe = Join-Path $publish "iCloverTweaks.exe"
+
+          if (!(Test-Path $exe)) {
+            throw "Build failed: iCloverTweaks.exe was not produced."
+          }
+
+          $files = @(Get-ChildItem $publish -File)
+          if ($files.Count -ne 1 -or $files[0].Name -ne "iCloverTweaks.exe") {
+            Write-Host "Unexpected publish contents:"
+            $files | Select-Object Name, Length
+            throw "The publish folder must contain exactly one file: iCloverTweaks.exe"
+          }
+
+          $size = (Get-Item $exe).Length
+          if ($size -lt 1000000) {
+            throw "The EXE is unexpectedly small ($size bytes)."
+          }
+
+          Write-Host "Verified: one distributable file only."
+          Write-Host "iCloverTweaks.exe = $size bytes"
+
+      - name: Upload only the EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: iCloverTweaks
+          path: publish/iCloverTweaks.exe
+          if-no-files-found: error
+
+      - name: Create GitHub Release with only the EXE asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v1.0.${{ github.run_number }}"
+          gh release create "$TAG" "publish/iCloverTweaks.exe" \
+            --title "iClover Tweaks $TAG" \
+            --notes "Windows 10/11 x64 portable single-file executable. Download iCloverTweaks.exe and run it."
