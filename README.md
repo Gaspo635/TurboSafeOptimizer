@@ -1,38 +1,33 @@
-# TurboSafe Optimizer
+# iClover Tweaks
 
-Professional Windows optimization and diagnostics utility focused on gaming, maintenance and reversible workflows.
-
-> **NO MEJORÓ = NO SE QUEDA.**
-
-## What it does
-
-- Detects CPU, GPU, RAM and Windows information.
-- Creates local diagnostic JSON reports.
-- Cleans Windows temporary files without targeting personal documents.
-- Flushes DNS and resets Winsock with confirmation.
-- Opens official Windows Game Mode settings.
-- Opens Windows System Information.
-- Can request a Windows restore point before major changes.
-- Does not disable Defender, Firewall, UAC or other Windows security mechanisms.
+Professional Windows 10/11 x64 optimizer and maintenance utility.
 
 ## Download
 
-The latest self-contained Windows x64 executable is published automatically:
+The GitHub Pages download page points to the latest single-file executable:
 
-https://github.com/Gaspo635/TurboSafeOptimizer/releases/latest/download/TurboSafeOptimizer.exe
-
-It is a single .exe and includes the .NET runtime.
+https://github.com/Gaspo635/TurboSafeOptimizer/releases/latest/download/iCloverTweaks.exe
 
 ## Build
 
-Requires .NET 8 SDK and Windows:
+The repository contains a GitHub Actions workflow that:
 
-```powershell
-dotnet publish TurboSafeOptimizer/TurboSafeOptimizer.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
-```
+1. Restores .NET 8.
+2. Publishes a self-contained Windows x64 single-file EXE.
+3. Verifies that the EXE exists.
+4. Creates a GitHub Release with the EXE.
+5. Uploads the EXE as a workflow artifact.
 
-## Architecture
+## Safety
 
-Scan → Measure → Backup → Change → Measure → Keep/Revert.
+iClover Tweaks is designed around a restore-first workflow. It does not disable Windows Defender, Firewall, UAC or other core security mechanisms.
 
-The current release is deliberately conservative: diagnostics and maintenance first, with explicit confirmations for privileged operations.
+Current maintenance actions are intentionally conservative: restore point request, temporary-file cleanup, DNS cache flush and links to native Windows tools.
+
+## GitHub Pages
+
+Set GitHub Pages to deploy from the `docs/` folder on the `main` branch. The page then uses the stable GitHub Releases latest-download URL, so the download button automatically follows the newest release.
+
+## License
+
+See the repository license before redistributing builds.
