@@ -1,0 +1,57 @@
+name: Build and publish Windows executable
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish single executable
+        run: >
+          dotnet publish TurboSafeOptimizer/TurboSafeOptimizer.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o publish
+
+      - name: Prepare release asset
+        shell: pwsh
+        run: |
+          if (Test-Path publish/TurboSafeOptimizer.exe) {
+            Copy-Item publish/TurboSafeOptimizer.exe TurboSafeOptimizer.exe -Force
+          } else {
+            $exe = Get-ChildItem publish -Filter *.exe | Select-Object -First 1
+            if (-not $exe) { throw "No executable was produced." }
+            Copy-Item $exe.FullName TurboSafeOptimizer.exe -Force
+          }
+
+      - name: Publish latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release view latest 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create latest TurboSafeOptimizer.exe --title "TurboSafe Optimizer - Latest" --notes "Latest Windows x64 single-file build." --target $env:GITHUB_SHA
+          } else {
+            gh release upload latest TurboSafeOptimizer.exe --clobber
+          }
