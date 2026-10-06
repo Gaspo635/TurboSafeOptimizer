@@ -229,8 +229,10 @@ public partial class MainWindow : Window
 
     private void OpenSection(string section)
     {
-        switch (section)
+        try
         {
+            switch (section)
+            {
             case "Dashboard":
                 PageTitle.Text = "Optimization Center";
                 PageSubtitle.Text = "A clean control center for Windows maintenance, gaming and diagnostics.";
@@ -291,6 +293,16 @@ public partial class MainWindow : Window
                 PageSubtitle.Text = "Create a Windows restore point before major changes.";
                 Restore_Click(this, new RoutedEventArgs());
                 break;
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Action failed";
+            MessageBox.Show(
+                "Windows could not open or complete this action.\\n\\n" + ex.Message,
+                "iClover Tweaks",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
     }
 
