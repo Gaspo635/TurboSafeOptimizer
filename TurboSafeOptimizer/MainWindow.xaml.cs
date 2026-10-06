@@ -158,9 +158,28 @@ public partial class MainWindow : Window
 
     private static void CreateRestorePoint()
     {
-        RunPowerShell(
+        var command =
             "Checkpoint-Computer -Description 'iClover Tweaks Restore Point' " +
-            "-RestorePointType 'MODIFY_SETTINGS'");
+            "-RestorePointType 'MODIFY_SETTINGS'";
+
+        var encoded = Convert.ToBase64String(
+            System.Text.Encoding.Unicode.GetBytes(command));
+
+        using var process = Process.Start(new ProcessStartInfo
+        {
+            FileName = "powershell.exe",
+            Arguments = $"-NoProfile -EncodedCommand {encoded}",
+            UseShellExecute = true,
+            Verb = "runas",
+            CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden
+        });
+
+        process?.WaitForExit();
+
+        if (process is not null && process.ExitCode != 0)
+            throw new InvalidOperationException(
+                $"PowerShell returned exit code {process.ExitCode}.");
     }
 
     private static void CleanTemp()
